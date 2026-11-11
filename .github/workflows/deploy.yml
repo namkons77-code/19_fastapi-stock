@@ -1,0 +1,43 @@
+name: Deploy to AWS EC2
+
+on:
+  push:
+    branches:
+      - master
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Deploy to EC2 via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USERNAME }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          port: 22
+          script: |
+            echo "======================================"
+            echo "🚀 Starting Deployment on EC2"
+            echo "======================================"
+            cd /home/ubuntu/app
+            
+            # 최신 코드 pull
+            git pull origin master
+            
+            # uv를 통한 가상환경 및 의존성 패키지 동기화
+            /home/ubuntu/.local/bin/uv sync
+            
+            # systemd 서비스 재시작
+            sudo systemctl restart fastapi-stock
+            
+            # 서비스 실행 상태 확인
+            sudo systemctl is-active --quiet fastapi-stock && echo "✅ Service restarted successfully!" || (echo "❌ Service failed to start" && exit 1)
+            echo "======================================"
+            echo "🎉 Deployment Completed!"
+            echo "======================================"
